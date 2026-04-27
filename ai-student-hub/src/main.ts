@@ -1,23 +1,31 @@
 const app = document.querySelector<HTMLDivElement>('#app')!;
 
-// --- MÉMOIRE DU CHAT ---
-let chatHistory: { role: string; content: string }[] = [
+// --- MÉMOIRE DU CHAT (persistante) ---
+const CHAT_STORAGE_KEY = 'best_chat_history';
+let chatHistory: { role: string; content: string }[] = JSON.parse(
+  localStorage.getItem(CHAT_STORAGE_KEY) || 'null'
+) || [
   {
     role: "system",
     content: `Tu es "Best", un assistant étudiant ultra-avancé. Règles :
-- Réponds TOUJOURS dans un français impeccable, chaleureux et naturel, comme un mentor humain.
-- Utilise des emojis avec parcimonie pour rendre la conversation vivante.
-- Si l'utilisateur est stressé ou bloqué, rassure-le avec empathie.
-- Fournis des explications claires, étape par étape si nécessaire.
-- Signe occasionnellement avec "– Best ✨" mais pas à chaque message.
-- Reste concis sauf si on te demande des détails.
-- Ne mentionne jamais que tu es une IA ou un modèle de langage, sauf si on te le demande explicitement.`
+- Réponds TOUJOURS dans un français impeccable, chaleureux et naturel.
+- Si l'utilisateur demande une notion scolaire (maths, physique, etc.), **structure ta réponse en trois parties** :
+  1️⃣ **Explication du cours** (avec preuve si possible).
+  2️⃣ **Exemples / Exercices résolus** (détaillés).
+  3️⃣ **Questions pour tester la compréhension** (avec réponses masquées).
+- Utilise des emojis avec parcimonie.
+- Signe occasionnellement "– Best ✨".
+- Reste concis sauf si on te demande des détails.`
   },
   {
     role: "assistant",
-    content: "Salut ! Je suis **Best**, ton compagnon d'étude personnel. Pose-moi une question, donne-moi un texte à analyser, ou lance un calcul. Je suis là pour t'aider à briller. 🌟"
+    content: "Salut ! Je suis **Best**, ton compagnon d'étude. Pose-moi une question, demande un calcul ou une traduction. Je suis là pour t'aider à briller. 🌟"
   }
 ];
+
+function saveHistory() {
+  localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(chatHistory));
+}
 
 // --- INTERFACE COMPLÈTE ---
 app.innerHTML = `
@@ -35,25 +43,18 @@ app.innerHTML = `
   <header class="header">
     <div class="robot-container">
       <svg class="robot" viewBox="0 0 120 140" width="120" height="140">
-        <!-- Corps -->
         <rect x="20" y="50" width="80" height="70" rx="15" fill="#6366f1" stroke="#818cf8" stroke-width="2"/>
-        <!-- Tête -->
         <rect x="30" y="10" width="60" height="45" rx="12" fill="#c084fc" stroke="#e9d5ff" stroke-width="2"/>
-        <!-- Yeux -->
         <circle cx="45" cy="32" r="6" fill="white"/>
         <circle cx="75" cy="32" r="6" fill="white"/>
         <circle cx="45" cy="32" r="3" fill="#1e1b4b"/>
         <circle cx="75" cy="32" r="3" fill="#1e1b4b"/>
-        <!-- Antenne -->
         <line x1="60" y1="10" x2="60" y2="0" stroke="#f472b6" stroke-width="3"/>
         <circle cx="60" cy="0" r="4" fill="#f472b6"/>
-        <!-- Bras -->
         <rect x="5" y="60" width="15" height="40" rx="7" fill="#a78bfa"/>
         <rect x="100" y="60" width="15" height="40" rx="7" fill="#a78bfa"/>
-        <!-- Panneau "Best" -->
         <rect x="35" y="75" width="50" height="25" rx="5" fill="#0f172a" stroke="#f472b6" stroke-width="1.5"/>
         <text x="60" y="93" text-anchor="middle" fill="#f472b6" font-size="12" font-weight="bold" font-family="Space Grotesk">BEST</text>
-        <!-- Jambes -->
         <rect x="30" y="120" width="15" height="20" rx="5" fill="#6366f1"/>
         <rect x="75" y="120" width="15" height="20" rx="5" fill="#6366f1"/>
       </svg>
@@ -68,23 +69,22 @@ app.innerHTML = `
     <button onclick="window.showTab('translate')" id="nav-translate" class="nav-btn">🌐 Traduction</button>
     <button onclick="window.showTab('summary')" id="nav-summary" class="nav-btn">📝 Résumé</button>
     <button onclick="window.showTab('math')" id="nav-math" class="nav-btn">🧮 Calcul</button>
+    <button onclick="window.showTab('geometry')" id="nav-geometry" class="nav-btn">📐 Géométrie</button>
   </nav>
 
-  <!-- ONGLET CHAT -->
+  <!-- ZONE CHAT -->
   <div id="tab-chat" class="tab-content">
-    <div id="chat-box" class="chat-container">
-      <div class="ai-msg">
-        <div class="avatar bot-avatar">🤖</div>
-        <div class="bubble"><b>Best</b> : Salut ! Je suis <b>Best</b>, ton compagnon d'étude. Pose-moi une question ou demande-moi de l'aide.</div>
-      </div>
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
+      <button id="clear-chat-btn" style="background:none; border:1px solid #475569; color:#94a3b8; padding:6px 14px; border-radius:20px; cursor:pointer; font-size:0.8rem;">🗑️ Effacer l'historique</button>
     </div>
+    <div id="chat-box" class="chat-container"></div>
     <div class="input-bar">
       <input type="text" id="chat-input" placeholder="Écris ton message..." autocomplete="off">
       <button id="btn-chat" class="glow-btn">Envoyer</button>
     </div>
   </div>
 
-  <!-- ONGLET TRADUCTION -->
+  <!-- ZONE TRADUCTION -->
   <div id="tab-translate" class="tab-content" style="display:none;">
     <div class="glass-card">
       <div class="lang-selectors">
@@ -120,7 +120,7 @@ app.innerHTML = `
     </div>
   </div>
 
-  <!-- ONGLET RÉSUMÉ -->
+  <!-- ZONE RÉSUMÉ -->
   <div id="tab-summary" class="tab-content" style="display:none;">
     <div class="glass-card">
       <textarea id="summary-input" placeholder="Colle un long texte..." class="custom-textarea" style="height:140px;"></textarea>
@@ -137,10 +137,10 @@ app.innerHTML = `
     </div>
   </div>
 
-  <!-- ONGLET MATHÉMATIQUES -->
+  <!-- ZONE CALCUL -->
   <div id="tab-math" class="tab-content" style="display:none;">
     <div class="glass-card">
-      <h3 style="margin:0 0 15px 0; color:#c084fc;">Calculatrice intelligente</h3>
+      <h3 style="margin:0 0 15px 0; color:#c084fc;">🧮 Calculatrice avancée</h3>
       <div class="math-display">
         <input type="text" id="math-input" placeholder="Ex: 2+2, sqrt(16), sin(pi/2)..." class="math-input">
         <div id="math-history" class="math-history"></div>
@@ -160,6 +160,32 @@ app.innerHTML = `
         <button id="btn-math" class="glow-btn" style="grid-column: span 2;">Calculer</button>
       </div>
       <div id="math-result" class="result-box" style="margin-top:15px;"></div>
+    </div>
+  </div>
+
+  <!-- ZONE GÉOMÉTRIE -->
+  <div id="tab-geometry" class="tab-content" style="display:none;">
+    <div class="glass-card">
+      <h3 style="margin:0 0 15px 0; color:#c084fc;">📐 Calculs géométriques</h3>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div>
+          <label style="color:#94a3b8">Point A (x₁, y₁)</label>
+          <div style="display:flex; gap:6px;">
+            <input type="number" id="geo-x1" placeholder="x₁" class="geo-input" value="0">
+            <input type="number" id="geo-y1" placeholder="y₁" class="geo-input" value="0">
+          </div>
+        </div>
+        <div>
+          <label style="color:#94a3b8">Point B (x₂, y₂)</label>
+          <div style="display:flex; gap:6px;">
+            <input type="number" id="geo-x2" placeholder="x₂" class="geo-input" value="1">
+            <input type="number" id="geo-y2" placeholder="y₂" class="geo-input" value="1">
+          </div>
+        </div>
+      </div>
+      <button id="btn-geo" class="glow-btn full-width" style="margin-top:15px;">Calculer</button>
+      <div id="geo-result" class="result-box" style="margin-top:15px;"></div>
+      <div class="math-history" id="geo-history" style="margin-top:8px;"></div>
     </div>
   </div>
 </div>`;
@@ -202,16 +228,9 @@ style.innerHTML = `
     border: 1px solid rgba(148, 163, 184, 0.1);
   }
 
-  .header {
-    display: flex; flex-direction: column; align-items: center; margin-bottom: 25px;
-  }
-  .robot-container {
-    animation: bobble 3s infinite ease-in-out;
-  }
-  @keyframes bobble {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
-  }
+  .header { display: flex; flex-direction: column; align-items: center; margin-bottom: 25px; }
+  .robot-container { animation: bobble 3s infinite ease-in-out; }
+  @keyframes bobble { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-8px);} }
   .title {
     font-size: 2.8rem; font-weight: 800; margin: 5px 0 0;
     background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
@@ -219,18 +238,14 @@ style.innerHTML = `
     filter: drop-shadow(0 0 20px rgba(129,140,248,0.5));
     letter-spacing: -1px; text-align: center;
   }
-  .subtitle {
-    color: #94a3b8; font-size: 0.9rem; letter-spacing: 2px; text-transform: uppercase;
-  }
+  .subtitle { color: #94a3b8; font-size: 0.9rem; letter-spacing: 2px; text-transform: uppercase; }
 
-  .nav { 
-    display: flex; gap: 10px; justify-content: center; margin-bottom: 30px; flex-wrap: wrap;
-  }
+  .nav { display: flex; gap: 8px; justify-content: center; margin-bottom: 30px; flex-wrap: wrap; }
   .nav-btn {
     background: rgba(30, 41, 59, 0.5); 
     color: #94a3b8; 
     border: 1px solid rgba(71, 85, 105, 0.5); 
-    padding: 12px 22px; border-radius: 40px; cursor: pointer; 
+    padding: 12px 18px; border-radius: 40px; cursor: pointer; 
     font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px;
     transition: all 0.3s; backdrop-filter: blur(8px);
   }
@@ -272,122 +287,85 @@ style.innerHTML = `
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
     border: none; color: white; border-radius: 18px 18px 4px 18px;
   }
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+  @keyframes slideIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 
-  .input-bar {
-    display: flex; gap: 10px; background: rgba(30, 41, 59, 0.6);
-    backdrop-filter: blur(15px); padding: 8px; border-radius: 50px;
-    border: 1px solid rgba(71, 85, 105, 0.5);
-  }
-  .input-bar input {
-    flex: 1; padding: 14px 20px; border: none; background: transparent;
-    color: white; outline: none; font-size: 15px; font-family: inherit;
-  }
-  .input-bar input::placeholder { color: #64748b; }
+  .input-bar { display:flex; gap:10px; background:rgba(30,41,59,0.6); backdrop-filter:blur(15px); padding:8px; border-radius:50px; border:1px solid rgba(71,85,105,0.5); }
+  .input-bar input { flex:1; padding:14px 20px; border:none; background:transparent; color:#fff; outline:none; font-size:15px; font-family:inherit; }
+  .input-bar input::placeholder { color:#64748b; }
 
   .glow-btn {
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    color: white; border: none; padding: 12px 28px; border-radius: 50px;
-    cursor: pointer; font-weight: 700; letter-spacing: 0.5px;
-    transition: all 0.3s; box-shadow: 0 0 25px rgba(99,102,241,0.5);
-    white-space: nowrap; font-family: inherit; font-size: 0.95rem;
+    color:#fff; border:none; padding:12px 28px; border-radius:50px;
+    cursor:pointer; font-weight:700; letter-spacing:0.5px;
+    transition:all 0.3s; box-shadow:0 0 25px rgba(99,102,241,0.5);
+    white-space:nowrap; font-family:inherit; font-size:0.95rem;
   }
-  .glow-btn:hover {
-    box-shadow: 0 0 45px rgba(139,92,246,0.7); transform: translateY(-2px);
-  }
-  .full-width { width: 100%; margin-top: 12px; }
+  .glow-btn:hover { box-shadow:0 0 45px rgba(139,92,246,0.7); transform:translateY(-2px); }
+  .full-width { width:100%; margin-top:12px; }
 
-  .glass-card {
-    background: rgba(30, 41, 59, 0.5);
-    backdrop-filter: blur(18px);
-    padding: 22px; border-radius: 20px;
-    border: 1px solid rgba(71, 85, 105, 0.35);
-  }
-  .custom-textarea {
-    width: 100%; padding: 14px; border-radius: 14px;
-    border: 1px solid rgba(71, 85, 105, 0.5);
-    background: rgba(15, 23, 42, 0.6); color: #e2e8f0;
-    resize: vertical; font-family: inherit; font-size: 0.95rem; outline: none;
-  }
-  .custom-textarea:focus { border-color: #818cf8; box-shadow: 0 0 20px rgba(99,102,241,0.2); }
-  .custom-select {
-    padding: 10px 14px; border-radius: 30px;
-    border: 1px solid rgba(71, 85, 105, 0.5);
-    background: rgba(15, 23, 42, 0.7); color: #e2e8f0;
-    font-family: inherit; outline: none; cursor: pointer;
-  }
-  .lang-selectors, .length-selector {
-    display: flex; gap: 10px; align-items: center; margin-bottom: 15px;
-  }
+  .glass-card { background:rgba(30,41,59,0.5); backdrop-filter:blur(18px); padding:22px; border-radius:20px; border:1px solid rgba(71,85,105,0.35); }
+  .custom-textarea { width:100%; padding:14px; border-radius:14px; border:1px solid rgba(71,85,105,0.5); background:rgba(15,23,42,0.6); color:#e2e8f0; resize:vertical; font-family:inherit; font-size:0.95rem; outline:none; }
+  .custom-textarea:focus { border-color:#818cf8; box-shadow:0 0 20px rgba(99,102,241,0.2); }
+  .custom-select { padding:10px 14px; border-radius:30px; border:1px solid rgba(71,85,105,0.5); background:rgba(15,23,42,0.7); color:#e2e8f0; font-family:inherit; outline:none; cursor:pointer; }
+  .lang-selectors, .length-selector { display:flex; gap:10px; align-items:center; margin-bottom:15px; }
   .arrow { color:#818cf8; font-size:1.4rem; }
 
-  .result-box {
-    margin-top: 18px; padding: 16px 20px;
-    background: rgba(15, 23, 42, 0.7); border-radius: 14px;
-    border-left: 4px solid #818cf8; min-height: 45px;
-    color: #cbd5e1; line-height: 1.5; animation: fadeIn 0.4s ease;
-  }
-  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+  .result-box { margin-top:18px; padding:16px 20px; background:rgba(15,23,42,0.7); border-radius:14px; border-left:4px solid #818cf8; min-height:45px; color:#cbd5e1; line-height:1.5; animation:fadeIn 0.4s ease; }
+  @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
 
-  .typing-dots { display: inline-flex; gap: 4px; }
-  .typing-dots span {
-    width: 7px; height: 7px; background: #818cf8; border-radius: 50%;
-    animation: bounce 1.2s infinite;
-  }
-  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
-  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes bounce {
-    0%, 60%, 100% { transform: translateY(0); }
-    30% { transform: translateY(-8px); }
-  }
+  .typing-dots { display:inline-flex; gap:4px; }
+  .typing-dots span { width:7px; height:7px; background:#818cf8; border-radius:50%; animation:bounce 1.2s infinite; }
+  .typing-dots span:nth-child(2){ animation-delay:0.2s; }
+  .typing-dots span:nth-child(3){ animation-delay:0.4s; }
+  @keyframes bounce { 0%,60%,100%{ transform:translateY(0); } 30%{ transform:translateY(-8px); } }
 
-  /* Math tab */
-  .math-display { margin-bottom: 15px; }
-  .math-input {
-    width: 100%; padding: 14px; font-size: 1.3rem;
-    background: rgba(15, 23, 42, 0.8); border: 1px solid #475569;
-    border-radius: 14px; color: #f1f5f9; font-family: 'Space Grotesk', monospace;
-    outline: none; text-align: right;
-  }
-  .math-history {
-    margin-top: 8px; min-height: 24px; color: #64748b; font-size: 0.85rem;
-    font-family: monospace; text-align: right;
-  }
-  .math-buttons {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
-  }
-  .math-btn {
-    background: rgba(30, 41, 59, 0.7); border: 1px solid #475569;
-    color: #e2e8f0; padding: 12px; border-radius: 12px;
-    font-size: 1.1rem; cursor: pointer; transition: 0.2s;
-    font-weight: 600;
-  }
-  .math-btn:hover { background: #4b5563; }
-  .clear-btn { background: rgba(239,68,68,0.3); border-color: #ef4444; }
-  .clear-btn:hover { background: rgba(239,68,68,0.6); }
+  .math-input { width:100%; padding:14px; font-size:1.3rem; background:rgba(15,23,42,0.8); border:1px solid #475569; border-radius:14px; color:#f1f5f9; font-family:'Space Grotesk',monospace; outline:none; text-align:right; }
+  .math-history { min-height:24px; color:#64748b; font-size:0.85rem; font-family:monospace; text-align:right; margin-top:4px; }
+  .math-buttons { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  .math-btn { background:rgba(30,41,59,0.7); border:1px solid #475569; color:#e2e8f0; padding:12px; border-radius:12px; font-size:1.1rem; cursor:pointer; transition:0.2s; font-weight:600; }
+  .math-btn:hover { background:#4b5563; }
+  .clear-btn { background:rgba(239,68,68,0.3); border-color:#ef4444; }
+  .clear-btn:hover { background:rgba(239,68,68,0.6); }
+
+  .geo-input { width:100%; padding:10px; background:rgba(15,23,42,0.8); border:1px solid #475569; border-radius:12px; color:#e2e8f0; font-family:inherit; font-size:0.95rem; outline:none; text-align:center; }
+  .geo-input:focus { border-color:#818cf8; }
 `;
 document.head.appendChild(style);
 
-// ==================== LOGIQUE DES ONGLETS ====================
+// ==================== GESTION DES ONGLETS ====================
 (window as any).showTab = (tab: string) => {
   document.querySelectorAll('.tab-content').forEach((el: any) => el.style.display = 'none');
   document.getElementById(`tab-${tab}`)!.style.display = 'block';
   document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active-tab'));
-  const activeBtn = document.getElementById(`nav-${tab}`);
-  if (activeBtn) activeBtn.classList.add('active-tab');
+  document.getElementById(`nav-${tab}`)?.classList.add('active-tab');
 };
 
-// ==================== CHAT ====================
+// ==================== CHAT AVEC SAUVEGARDE ====================
 const chatBox = document.getElementById('chat-box')!;
 const chatInput = document.getElementById('chat-input') as HTMLInputElement;
 
-function addMessage(role: 'user' | 'ai', text: string) {
+function renderAllMessages() {
+  chatBox.innerHTML = '';
+  chatHistory.forEach(msg => {
+    if (msg.role === 'user' || msg.role === 'assistant') {
+      const div = document.createElement('div');
+      div.className = msg.role === 'assistant' ? 'ai-msg' : 'user-msg';
+      const avatar = msg.role === 'assistant' ? '🤖' : '👤';
+      const avatarClass = msg.role === 'assistant' ? 'bot-avatar' : '';
+      const content = msg.content.replace(/\n/g, '<br>');
+      div.innerHTML = msg.role === 'assistant'
+        ? `<div class="avatar bot-avatar">${avatar}</div><div class="bubble"><b>Best</b> : ${content}</div>`
+        : `<div class="avatar">${avatar}</div><div class="bubble">${content}</div>`;
+      chatBox.appendChild(div);
+    }
+  });
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function addMessageLive(role: 'user' | 'ai', text: string) {
   const div = document.createElement('div');
   div.className = role === 'ai' ? 'ai-msg' : 'user-msg';
-  div.innerHTML = role === 'ai' 
+  div.innerHTML = role === 'ai'
     ? `<div class="avatar bot-avatar">🤖</div><div class="bubble"><b>Best</b> : ${text.replace(/\n/g, '<br>')}</div>`
     : `<div class="avatar">👤</div><div class="bubble">${text}</div>`;
   chatBox.appendChild(div);
@@ -396,24 +374,22 @@ function addMessage(role: 'user' | 'ai', text: string) {
 
 function showTyping() {
   const div = document.createElement('div');
-  div.className = 'ai-msg';
-  div.id = 'typing-indicator';
+  div.className = 'ai-msg'; div.id = 'typing-indicator';
   div.innerHTML = `<div class="avatar bot-avatar">🤖</div><div class="bubble"><span class="typing-dots"><span></span><span></span><span></span></span></div>`;
   chatBox.appendChild(div);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
-
-function removeTyping() {
-  document.getElementById('typing-indicator')?.remove();
-}
+function removeTyping() { document.getElementById('typing-indicator')?.remove(); }
 
 async function handleChat() {
   const text = chatInput.value.trim();
   if (!text) return;
-  addMessage('user', text);
+
+  addMessageLive('user', text);
   chatHistory.push({ role: "user", content: text });
   chatInput.value = "";
   showTyping();
+  saveHistory();
 
   try {
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -426,22 +402,35 @@ async function handleChat() {
         model: "openai/gpt-3.5-turbo",
         messages: chatHistory,
         temperature: 0.75,
-        max_tokens: 800
+        max_tokens: 900
       })
     });
     const data = await res.json();
     removeTyping();
-    const aiResponse = data.choices?.[0]?.message?.content ?? "Désolé, je n'ai pas saisi. Peux-tu reformuler ?";
+    const aiResponse = data.choices?.[0]?.message?.content ?? "Désolé, je n'ai pas saisi. Reformule.";
     chatHistory.push({ role: "assistant", content: aiResponse });
-    addMessage('ai', aiResponse);
+    addMessageLive('ai', aiResponse);
+    saveHistory();
   } catch {
     removeTyping();
-    addMessage('ai', "Oups, petit problème de connexion. Réessaie. 🙏");
+    addMessageLive('ai', "Oups, problème de connexion. Réessaie. 🙏");
   }
 }
 
 document.getElementById('btn-chat')!.onclick = handleChat;
 chatInput.onkeydown = (e) => { if (e.key === 'Enter') handleChat(); };
+
+// Effacer historique
+document.getElementById('clear-chat-btn')!.onclick = () => {
+  if (confirm("Effacer tout l'historique de la conversation ?")) {
+    chatHistory = [chatHistory[0], chatHistory[1]]; // garde system + accueil
+    saveHistory();
+    renderAllMessages();
+  }
+};
+
+// Initialisation : afficher les messages sauvegardés
+renderAllMessages();
 
 // ==================== TRADUCTION ====================
 document.getElementById('btn-trans')!.onclick = async () => {
@@ -454,7 +443,7 @@ document.getElementById('btn-trans')!.onclick = async () => {
   try {
     const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${from}|${to}`);
     const data = await res.json();
-    resultBox.innerHTML = `<b>Traduction :</b><br><span style="font-size:1.1rem; color:#a5b4fc;">${data.responseData.translatedText}</span>`;
+    resultBox.innerHTML = `<b>Traduction</b> :<br><span style="font-size:1.1rem; color:#a5b4fc;">${data.responseData.translatedText}</span>`;
   } catch {
     resultBox.textContent = "Erreur de traduction.";
   }
@@ -486,25 +475,24 @@ document.getElementById('btn-summary')!.onclick = async () => {
       })
     });
     const data = await res.json();
-    resultBox.innerHTML = `<b>Résumé :</b><br>${data.choices[0].message.content.replace(/\n/g, '<br>')}`;
+    resultBox.innerHTML = `<b>Résumé</b> :<br>${data.choices[0].message.content.replace(/\n/g, '<br>')}`;
   } catch {
     resultBox.textContent = "Erreur lors du résumé.";
   }
 };
 
 // ==================== CALCUL MATHÉMATIQUE ====================
-// Charger math.js depuis CDN
 const mathScript = document.createElement('script');
 mathScript.src = "https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js";
 document.head.appendChild(mathScript);
 
+let mathHistoryList: string[] = [];
 (window as any).insertMath = (symbol: string) => {
   const input = document.getElementById('math-input') as HTMLInputElement;
   const start = input.selectionStart ?? input.value.length;
   const end = input.selectionEnd ?? input.value.length;
   const before = input.value.substring(0, start);
   const after = input.value.substring(end);
-  // Si on insère une fonction avec parenthèse, placer le curseur à l'intérieur
   let cursorShift = symbol.length;
   if (symbol.endsWith('(')) cursorShift = symbol.length;
   input.value = before + symbol + after;
@@ -521,10 +509,53 @@ mathScript.onload = () => {
     if (!expr) return;
     try {
       const result = (window as any).math.evaluate(expr);
-      historyDiv.textContent = `${expr} = ${result}`;
-      resultBox.innerHTML = `<b>Résultat :</b> <span style="font-size:1.5rem; color:#a5b4fc;">${result}</span>`;
-    } catch (e) {
-      resultBox.textContent = "Expression invalide. Vérifie la syntaxe.";
+      const entry = `${expr} = ${result}`;
+      mathHistoryList.push(entry);
+      historyDiv.textContent = mathHistoryList.slice(-3).join(' | ');
+      resultBox.innerHTML = `<b>Résultat</b> : <span style="font-size:1.5rem; color:#a5b4fc;">${result}</span>`;
+    } catch {
+      resultBox.textContent = "Expression invalide.";
     }
   };
 };
+
+// ==================== GÉOMÉTRIE ====================
+const geoHistory: string[] = [];
+document.getElementById('btn-geo')!.onclick = () => {
+  const x1 = parseFloat((document.getElementById('geo-x1') as HTMLInputElement).value);
+  const y1 = parseFloat((document.getElementById('geo-y1') as HTMLInputElement).value);
+  const x2 = parseFloat((document.getElementById('geo-x2') as HTMLInputElement).value);
+  const y2 = parseFloat((document.getElementById('geo-y2') as HTMLInputElement).value);
+  const resultBox = document.getElementById('geo-result')!;
+  const historyDiv = document.getElementById('geo-history')!;
+
+  if (isNaN(x1) || isNaN(y1) || isNaN(x2) || isNaN(y2)) {
+    resultBox.textContent = "Veuillez entrer des coordonnées valides.";
+    return;
+  }
+
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const distance = Math.sqrt(dx*dx + dy*dy).toFixed(4);
+  const slope = dx === 0 ? "∞ (verticale)" : (dy / dx).toFixed(4);
+  const midpoint = `(${((x1+x2)/2).toFixed(2)}, ${((y1+y2)/2).toFixed(2)})`;
+  const angle = (Math.atan2(dy, dx) * 180 / Math.PI).toFixed(2);
+  const equation = dx === 0 
+    ? `x = ${x1}`
+    : `y = ${slope}x + ${(y1 - parseFloat(slope)*x1).toFixed(2)}`;
+
+  resultBox.innerHTML = `
+    <b>Résultats (A→B) :</b><br>
+    📏 <b>Distance (longueur)</b> : ${distance}<br>
+    📐 <b>Pente</b> : ${slope}<br>
+    📍 <b>Milieu</b> : ${midpoint}<br>
+    📏 <b>Angle avec l'horizontale</b> : ${angle}°<br>
+    📈 <b>Équation de la droite (AB)</b> : ${equation}
+  `;
+
+  geoHistory.push(`(${x1},${y1})→(${x2},${y2})`);
+  historyDiv.textContent = `Historique : ${geoHistory.slice(-5).join(' | ')}`;
+};
+
+// Activation premier onglet
+(window as any).showTab('chat');
